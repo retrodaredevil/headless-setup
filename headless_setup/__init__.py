@@ -60,3 +60,7 @@ def main():
         real_main()
     except KeyboardInterrupt:
         print("\nExiting")
+
+
+if __name__ == '__main__':
+    main()
