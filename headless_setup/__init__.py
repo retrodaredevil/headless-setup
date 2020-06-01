@@ -4,7 +4,7 @@ from pathlib import Path
 
 SSH_FILE = Path("ssh")
 WIFI_FILE = Path("wpa_supplicant.conf")
-WIFI_STRING = """ctrl_interface=/run/wpa_supplicant
+WIFI_STRING = """ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country={country}
 
