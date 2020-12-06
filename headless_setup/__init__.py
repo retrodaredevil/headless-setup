@@ -10,15 +10,18 @@ country={country}
 
 network={{
 \tssid="{ssid}"
-\tpsk="{password}"
+\tpsk={password}
 }}
 """
 
 
 def request_boolean(default_value=None):
-    prompt = "(Y/n) "
-    if default_value is not None:
-        prompt += "(default " + ("Y" if default_value else "n") + ") "
+    if default_value is None:
+        prompt = "(y/n)"
+    elif default_value:
+        prompt = "(Y/n)"
+    else:
+        prompt = "(y/N)"
     value = input(prompt).lower()
     if "n" in value:
         return False
@@ -50,7 +53,27 @@ def real_main():
         country = input("Country (default " + default_country + ") ") or default_country
         print("Setting country to " + country)
         ssid = input("SSID ")
+        print("Encrypt password?")
+        encrypt = request_boolean(True)
         password = input("Password ")
+        if encrypt:
+            import hashlib
+            import binascii
+            while not (8 <= len(password) < 64):
+                print("Passphrase must be 8..63 characters")
+                password = input("Password ")
+            dk = hashlib.pbkdf2_hmac(
+                'sha1',
+                str.encode(password),
+                str.encode(ssid),
+                4096,
+                256
+            )
+            # credit to https://stackoverflow.com/a/60684618/5434860
+            password = binascii.hexlify(dk)[0:64].decode("utf8")
+        else:
+            password = '"' + password + '"'  # plaintext passwords need quotes around them
+
         with WIFI_FILE.open("w") as f:
             f.write(WIFI_STRING.format(country=country, ssid=ssid, password=password))
 
