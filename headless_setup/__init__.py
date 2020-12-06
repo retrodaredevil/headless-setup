@@ -1,14 +1,16 @@
 import locale
 from pathlib import Path
+from getpass import getpass
 
 
 SSH_FILE = Path("ssh")
 WIFI_FILE = Path("wpa_supplicant.conf")
-WIFI_STRING = """ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+WIFI_STRING_HEADER = """ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country={country}
 
-network={{
+"""
+WIFI_STRING_NETWORK = """network={{
 \tssid="{ssid}"
 \tpsk={password}
 }}
@@ -44,24 +46,28 @@ def real_main():
             SSH_FILE.open("w").close()
             print("Created ssh file")
 
-    wifi_message = "Configure WiFi?"
-    if WIFI_FILE.exists():
-        wifi_message += " (Will overwrite file)"
-    print(wifi_message)
+    print("Configure WiFi?")
     if request_boolean(True):
-        default_country = locale.getdefaultlocale()[0].split("_")[1]
-        country = input("Country (default " + default_country + ") ") or default_country
-        print("Setting country to " + country)
-        ssid = input("SSID ")
+        append_only = False
+        if WIFI_FILE.exists():
+            print("File exists. Would you like to append a new network instead of replacing the file?")
+            append_only = request_boolean(True)
+
+        country = None
+        if not append_only:
+            default_country = locale.getdefaultlocale()[0].split("_")[1]
+            country = input("Country (default " + default_country + "): ") or default_country
+            print("Setting country to " + country)
+        ssid = input("SSID: ")
         print("Encrypt password?")
         encrypt = request_boolean(True)
-        password = input("Password ")
+        password = getpass()
         if encrypt:
             import hashlib
             import binascii
             while not (8 <= len(password) < 64):
                 print("Passphrase must be 8..63 characters")
-                password = input("Password ")
+                password = getpass()
             dk = hashlib.pbkdf2_hmac(
                 'sha1',
                 str.encode(password),
@@ -74,8 +80,14 @@ def real_main():
         else:
             password = '"' + password + '"'  # plaintext passwords need quotes around them
 
-        with WIFI_FILE.open("w") as f:
-            f.write(WIFI_STRING.format(country=country, ssid=ssid, password=password))
+        if append_only:
+            with WIFI_FILE.open("a") as f:
+                f.write(WIFI_STRING_NETWORK.format(ssid=ssid, password=password))
+        else:
+            assert country is not None
+            with WIFI_FILE.open("w") as f:
+                f.write(WIFI_STRING_HEADER.format(country=country)
+                        + WIFI_STRING_NETWORK.format(ssid=ssid, password=password))
 
 
 def main():
